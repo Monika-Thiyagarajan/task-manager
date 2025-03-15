@@ -5,6 +5,10 @@ const routes = require('./routes/authRoutes');
 
 const app = express();
 app.use(express.json()) //handling middleware to parse json requests;
+const cors = require("cors");
+
+// Enable CORS
+app.use(cors());
 
 connectDB();
 

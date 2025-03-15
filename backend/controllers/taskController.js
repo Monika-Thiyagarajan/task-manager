@@ -23,6 +23,7 @@ exports.createTask = async (req, res) => {
 exports.getTasks = async (req, res) => {
   try {
     const tasks = await Task.find({ user: req.user }).sort({ createdAt: -1 }); // Show latest first
+    console.log(tasks,req.user)
     res.json(tasks);
   } catch (err) {
     res.status(500).json({ error: err.message });
