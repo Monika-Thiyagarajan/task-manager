@@ -47,7 +47,8 @@ function Signup() {
     }
 
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/signup", formData);
+      axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/signup`, formData);
+
       setMessage("Signup successful! Redirecting to login...");
       setTimeout(() => {
         navigate("/login");

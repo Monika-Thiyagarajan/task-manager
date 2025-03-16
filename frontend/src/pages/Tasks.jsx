@@ -23,7 +23,7 @@ function Tasks() {
   const fetchTasks = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/tasks", {
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/tasks`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTasks(response.data);
@@ -57,7 +57,7 @@ function Tasks() {
     }
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:5000/api/tasks", newTask, {
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/tasks`, newTask, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchTasks();
@@ -87,7 +87,7 @@ function Tasks() {
     }
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/tasks/${editTask.id}`, editTask, {
+      await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/tasks/${editTask.id}`, editTask, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchTasks();
@@ -109,7 +109,7 @@ function Tasks() {
     if (!taskToDelete) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/tasks/${taskToDelete._id}`, {
+      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/tasks/${taskToDelete._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
   
