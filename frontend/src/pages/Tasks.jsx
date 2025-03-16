@@ -1,17 +1,20 @@
 import { useState, useEffect } from "react";
-import { DataGrid } from "@mui/x-data-grid";
-import { IconButton, Menu, MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from "@mui/material";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import axios from "axios";
-import "../styles/tasks.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 
+import "../styles/tasks.css";
+const MAX_DESCRIPTION_LENGTH = 100;
 function Tasks() {
   const [tasks, setTasks] = useState([]);
-  const [menuAnchor, setMenuAnchor] = useState({});
-  const [openEdit, setOpenEdit] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1); // Track the current page
+  const [tasksPerPage] = useState(5);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
   const [editTask, setEditTask] = useState({ id: "", taskName: "", description: "", dueDate: "" });
-  const [openDelete, setOpenDelete] = useState(false);
+  const [newTask, setNewTask] = useState({ taskName: "", description: "", dueDate: "" });
   const [taskToDelete, setTaskToDelete] = useState(null);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchTasks();
@@ -28,142 +31,272 @@ function Tasks() {
       console.error("Error fetching tasks:", error);
     }
   };
-
-  // Handle menu open/close for a specific row
-  const handleMenuClick = (event, taskId) => {
-    setMenuAnchor((prev) => ({ ...prev, [taskId]: event.currentTarget }));
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+  const validateTask = (task) => {
+    let errors = {};
+    if (!task.taskName.trim()) errors.taskName = "Task name is required";
+    if (!task.dueDate.trim()) errors.dueDate = "Due date is required";
+    return errors;
   };
 
-  const handleMenuClose = (taskId) => {
-    setMenuAnchor((prev) => ({ ...prev, [taskId]: null }));
-  };
-
-  // Open Edit Task Modal
-  const handleEdit = (taskId) => {
-    const taskToEdit = tasks.find((task) => task._id === taskId);
-    if (taskToEdit) {
-      setEditTask({
-        id: taskToEdit._id,
-        taskName: taskToEdit.taskName,
-        description: taskToEdit.description,
-        dueDate: taskToEdit.dueDate ? taskToEdit.dueDate.split("T")[0] : "",
-      });
-      setOpenEdit(true);
+  const handleAddTask = async () => {
+    const validationErrors = validateTask(newTask);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
     }
-    handleMenuClose(taskId);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post("http://localhost:5000/api/tasks", newTask, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchTasks();
+      setShowAdd(false);
+      setNewTask({ taskName: "", description: "", dueDate: "" });
+      setErrors({});
+    } catch (error) {
+      console.error("Error adding task:", error);
+    }
   };
 
-  // Handle Input Change in Edit Modal
-  const handleEditChange = (e) => {
-    setEditTask({ ...editTask, [e.target.name]: e.target.value });
+  const handleEdit = (task) => {
+    setEditTask({
+      id: task._id,
+      taskName: task.taskName,
+      description: task.description,
+      dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
+    });
+    setShowEdit(true);
   };
 
-  // Submit Updated Task
-  const handleEditSubmit = async () => {
+  const handleUpdateTask = async () => {
+    const validationErrors = validateTask(editTask);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
     try {
       const token = localStorage.getItem("token");
       await axios.put(`http://localhost:5000/api/tasks/${editTask.id}`, editTask, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchTasks(); // Refresh the table
-      setOpenEdit(false); // Close modal
+      fetchTasks();
+      setShowEdit(false);
+      setEditTask({ id: "", taskName: "", description: "", dueDate: "" });
+      setErrors({});
     } catch (error) {
       console.error("Error updating task:", error);
     }
   };
 
-  // Open Delete Confirmation Dialog
   const handleDeleteConfirm = (taskId) => {
     setTaskToDelete(taskId);
-    setOpenDelete(true);
-    handleMenuClose(taskId);
+    console.log(taskId)
+    setShowDelete(true);
   };
 
-  // Delete Task
   const handleDelete = async () => {
     if (!taskToDelete) return;
-
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/tasks/${taskToDelete}`, {
+      await axios.delete(`http://localhost:5000/api/tasks/${taskToDelete._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchTasks(); // Refresh the table
-      setOpenDelete(false);
+  
+      const updatedTasks = tasks.filter(task => task._id !== taskToDelete._id); // Remove deleted task
+      setTasks(updatedTasks);
+      setShowDelete(false);
       setTaskToDelete(null);
+  
+      // If the current page is now empty, go back to page 1
+      const remainingTasksOnPage = updatedTasks.slice(
+        (currentPage - 1) * tasksPerPage,
+        currentPage * tasksPerPage
+      );
+      
+      if (remainingTasksOnPage.length === 0 && currentPage > 1) {
+        setCurrentPage(1);
+      }
     } catch (error) {
       console.error("Error deleting task:", error);
     }
   };
+  
+  // Calculate the tasks to be displayed on the current page
+  const indexOfLastTask = currentPage * tasksPerPage;
+  const indexOfFirstTask = indexOfLastTask - tasksPerPage;
+  const currentTasks = tasks.slice(indexOfFirstTask, indexOfLastTask);
 
-  // Table Columns
-  const columns = [
-    { field: "id", headerName: "No", width: 70 },
-    { field: "date", headerName: "Date & Time", width: 180 },
-    { field: "taskName", headerName: "Task", width: 200 },
-    { field: "description", headerName: "Description", width: 300 },
-    {
-      field: "actions",
-      headerName: "Actions",
-      width: 100,
-      renderCell: (params) => (
-        <>
-          <IconButton onClick={(event) => handleMenuClick(event, params.row.taskId)}>
-            <MoreVertIcon />
-          </IconButton>
-          <Menu
-            anchorEl={menuAnchor[params.row.taskId]}
-            open={Boolean(menuAnchor[params.row.taskId])}
-            onClose={() => handleMenuClose(params.row.taskId)}
-          >
-            <MenuItem onClick={() => handleEdit(params.row.taskId)}>Edit</MenuItem>
-            <MenuItem onClick={() => handleDeleteConfirm(params.row.taskId)}>Delete</MenuItem>
-          </Menu>
-        </>
-      ),
-    },
-  ];
+  const totalPages = Math.ceil(tasks.length / tasksPerPage);
 
-  // Convert tasks data to match DataGrid format
-  const rows = tasks.map((task, index) => ({
-    id: index + 1, // Sequential numbering
-    taskId: task._id, // Store actual MongoDB ID
-    date: new Date(task.createdAt).toLocaleString(),
-    taskName: task.taskName,
-    description: task.description,
-  }));
-
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
   return (
-    <div className="tasks-container">
-      <h2 className="tasks-title">Task Management</h2>
-      <DataGrid rows={rows} columns={columns} pageSize={5} autoHeight disableSelectionOnClick 
-       />
+    <div className="table-ontainer d-flex flex-column align-items-center" style={{ marginTop: "0" }}>
+      {/* Add New button to top */}
+      <div className="position-relative w-100">
+        <button
+          className="btn btn-primary position-absolute top-0 end-0 me-3 mt-3"
+          onClick={() => setShowAdd(true)}
+        >
+          + Add Task
+        </button>
+      </div>
 
-      {/* Edit Task Modal */}
-      <Dialog open={openEdit} onClose={() => setOpenEdit(false)}>
-        <DialogTitle>Edit Task</DialogTitle>
-        <DialogContent>
-          <TextField label="Task Name" name="taskName" fullWidth margin="dense" value={editTask.taskName} onChange={handleEditChange} />
-          <TextField label="Description" name="description" fullWidth margin="dense" value={editTask.description} onChange={handleEditChange} />
-          <TextField label="Due Date" type="date" name="dueDate" fullWidth margin="dense" InputLabelProps={{ shrink: true }} value={editTask.dueDate} onChange={handleEditChange} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEdit(false)} color="secondary">Cancel</Button>
-          <Button onClick={handleEditSubmit} color="primary">Update Task</Button>
-        </DialogActions>
-      </Dialog>
+      {/* Add some padding to avoid overlap */}
+      <div className="table-responsive w-100 mt-5" style={{ marginTop: "70px" }}>
+        <table className="table mt-3 text-center">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Date & Time</th>
+              <th>Task</th>
+              <th>Description</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentTasks.length > 0 ? (
+              currentTasks.map((task, index) => (
+                <tr key={task._id}>
+                  <td>{(currentPage - 1) * tasksPerPage + index + 1}</td>
+                  <td>{formatDate(task.createdAt)}</td>
+                  <td
+                    className="task-desc"
 
-      {/* Delete Confirmation Modal */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          Are you sure you want to delete this task?
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDelete(false)} color="secondary">Cancel</Button>
-          <Button onClick={handleDelete} color="error">Delete</Button>
-        </DialogActions>
-      </Dialog>
+                  >
+                    {task.taskName}
+                  </td>
+                  <td className="task-desc">{task.description}</td>
+                  <td>
+                    <div className="action-menu">
+                      <span className="dots">⋮</span>
+                      <div className="menu-options">
+                        <button onClick={() => handleEdit(task)}>Edit</button>
+                        <button className="text-danger" onClick={() => handleDeleteConfirm(task)}>Delete</button>
+                      </div>
+                    </div>
+                  </td>
+                  {/* <td>
+                    <button className="btn btn-warning btn-sm me-2" onClick={() => handleEdit(task)}>Edit</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleDeleteConfirm(task._id)}>Delete</button>
+                  </td> */}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="text-center">No records found</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+      </div>
+      <div className="d-flex justify-content-center mt-3">
+  <button
+    className="pagination-button ms-1"
+    disabled={currentPage === 1}
+    onClick={() => handlePageChange(currentPage - 1)}
+  >
+    &lt;
+  </button>
+
+  {/* Page Numbers */}
+  {[...Array(totalPages)].map((_, index) => (
+    <button
+      key={index}
+      className={`pagination-button ms-1 ${currentPage === index + 1 ? 'active' : ''}`}
+      onClick={() => handlePageChange(index + 1)}
+    >
+      {index + 1}
+    </button>
+  ))}
+
+  <button
+    className="pagination-button ms-1"
+    disabled={currentPage === totalPages}
+    onClick={() => handlePageChange(currentPage + 1)}
+  >
+    &gt;
+  </button>
+</div>
+
+
+      {(showAdd || showEdit) && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{showEdit ? "Edit Task" : "Add New Task"}</h5>
+                <button className="btn-close" onClick={() => { setShowAdd(false); setShowEdit(false); }}></button>
+              </div>
+              <div className="modal-body">
+                <input
+                  type="text"
+                  className="form-control mb-2"
+                  placeholder="Task Name"
+                  value={showEdit ? editTask.taskName : newTask.taskName}
+                  onChange={(e) => showEdit ? setEditTask({ ...editTask, taskName: e.target.value }) : setNewTask({ ...newTask, taskName: e.target.value })}
+                />
+                {errors.taskName && <div className="text-danger">{errors.taskName}</div>}
+
+                <textarea
+                  className="form-control mb-2"
+                  placeholder="Description"
+                  maxLength={MAX_DESCRIPTION_LENGTH}
+                  value={showEdit ? editTask.description : newTask.description}
+                  onChange={(e) => showEdit ? setEditTask({ ...editTask, description: e.target.value }) : setNewTask({ ...newTask, description: e.target.value })}
+                />
+                {errors.description && <div className="text-danger">{errors.description}</div>}
+
+                <input
+                  type="date"
+                  className="form-control"
+                  value={showEdit ? editTask.dueDate : newTask.dueDate}
+                  onChange={(e) => showEdit ? setEditTask({ ...editTask, dueDate: e.target.value }) : setNewTask({ ...newTask, dueDate: e.target.value })}
+                />
+                {errors.dueDate && <div className="text-danger">{errors.dueDate}</div>}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => { setShowAdd(false); setShowEdit(false); }}>Cancel</button>
+                <button className="btn btn-success" onClick={showEdit ? handleUpdateTask : handleAddTask}>
+                  {showEdit ? "Update Task" : "Add Task"}
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+      {showDelete && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Delete</h5>
+                <button className="btn-close" onClick={() => setShowDelete(false)}></button>
+              </div>
+              <div className="modal-body">Are you sure you want to delete this task?</div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowDelete(false)}>Cancel</button>
+                <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -25,7 +25,7 @@ function Navbar() {
 
   return (
     <nav className="navbar">
-      <h2>Task Manager</h2>
+      <h2>Task Management</h2>
       {isLoggedIn && <button className="logout-btn" onClick={handleLogout}>Logout</button>}
     </nav>
   );
