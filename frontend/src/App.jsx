@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route,Navigate,useNavigate, useLocation } from "react-router-dom";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import Tasks from "./pages/Tasks";
@@ -36,6 +36,7 @@ function App() {
     <Router>
       <Navbar />
       <Routes>
+       <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route element={<AuthGuard />}>

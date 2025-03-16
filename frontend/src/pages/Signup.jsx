@@ -1,9 +1,10 @@
 import { useState } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link,useNavigate } from "react-router-dom";
 import "../styles/signup.css";
 
 function Signup() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
@@ -47,7 +48,10 @@ function Signup() {
 
     try {
       const response = await axios.post("http://localhost:5000/api/auth/signup", formData);
-      setMessage("Signup successful! Please log in.");
+      setMessage("Signup successful! Redirecting to login...");
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
     } catch (error) {
       setMessage(error.response?.data?.error || "Signup failed");
     }
