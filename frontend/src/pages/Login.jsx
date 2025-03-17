@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link  } from "react-router-dom";
 import "../styles/login.css"; 
 import lemonpayLogo from "../assets/lemonpaylogo.png"; // Import the logo
 
@@ -65,7 +65,7 @@ function Login() {
         <img src={lemonpayLogo} alt="LemonPay Logo" class="logo" />
         <div class="left-text">
           <h4>Join 8 Million Businesses</h4>
-          <h4 class="highlight-text">Powering Growth with</h4>
+          <h4 class="highlight-text">Powering Growth with</h4> &nbsp;
           <h4>Lemonpay!</h4>
         </div>
       </div>
@@ -107,7 +107,8 @@ function Login() {
               <label>
                 <input type="checkbox" /> Remember me
               </label>
-              <a href="/signup">Sign up</a>
+              {/* <a href="/signup">Sign up</a> */}
+              <Link to="/signup">Sign up</Link>
             </div>
 
             <button class="login-btn" type="submit">Sign in</button>
