@@ -15,6 +15,7 @@ function Tasks() {
   const [newTask, setNewTask] = useState({ taskName: "", description: "", dueDate: "" });
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState({ text: "", type: "" });
 
   useEffect(() => {
     fetchTasks();
@@ -29,6 +30,7 @@ function Tasks() {
       setTasks(response.data);
     } catch (error) {
       console.error("Error fetching tasks:", error);
+      showAlert("Fetching tasks failed. Please try again", "danger");
     }
   };
   function formatDate(dateString) {
@@ -41,6 +43,10 @@ function Tasks() {
       minute: '2-digit',
       hour12: true,
     });
+  };
+  const showAlert = (text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: "", type: "" }), 1000);
   };
   const validateTask = (task) => {
     let errors = {};
@@ -64,8 +70,10 @@ function Tasks() {
       setShowAdd(false);
       setNewTask({ taskName: "", description: "", dueDate: "" });
       setErrors({});
+      showAlert("Task added successfully!", "success");
     } catch (error) {
       console.error("Error adding task:", error);
+      showAlert("Failed to add task.", "danger");
     }
   };
 
@@ -94,8 +102,10 @@ function Tasks() {
       setShowEdit(false);
       setEditTask({ id: "", taskName: "", description: "", dueDate: "" });
       setErrors({});
+      showAlert("Task updated successfully!", "success");
     } catch (error) {
       console.error("Error updating task:", error);
+      showAlert("Failed to update task.", "danger");
     }
   };
 
@@ -127,8 +137,10 @@ function Tasks() {
       if (remainingTasksOnPage.length === 0 && currentPage > 1) {
         setCurrentPage(1);
       }
+      showAlert("Task deleted successfully!", "success");
     } catch (error) {
       console.error("Error deleting task:", error);
+      showAlert("Failed to delete task.", "danger");
     }
   };
   
@@ -144,7 +156,11 @@ function Tasks() {
   };
   return (
     <div className="table-ontainer d-flex flex-column align-items-center" style={{ marginTop: "0" }}>
-      {/* Add New button to top */}
+      {message.text && (
+        <div className={`alert alert-${message.type} text-center`} role="alert">
+          {message.text}
+        </div>
+      )}
       <div className="position-relative w-100">
         <button
           className="btn btn-primary position-absolute top-0 end-0 me-3 mt-3"
@@ -263,6 +279,7 @@ function Tasks() {
                 <input
                   type="date"
                   className="form-control"
+                  min={new Date().toISOString().split("T")[0]}
                   value={showEdit ? editTask.dueDate : newTask.dueDate}
                   onChange={(e) => showEdit ? setEditTask({ ...editTask, dueDate: e.target.value }) : setNewTask({ ...newTask, dueDate: e.target.value })}
                 />
